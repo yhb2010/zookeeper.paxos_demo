@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+
+	<!-- Curator的FactoryBean，Spring启动时创建Curator实例。 -->
+	<bean id="zookeeperFactoryBean" class="com.demo.zookeeper.c6.configmanager2.ZookeeperFactoryBean"
+		lazy-init="false">
+		<property name="zkConnectionString" value="127.0.0.145:2181" />
+		<!-- 设置zookeeper的事件监听者，本例是一个logback日志级别znode监听器 -->
+		<property name="listeners">
+			<list>
+				<bean class="com.demo.zookeeper.c6.configmanager2.LogbackLevelListener">
+					<constructor-arg value="/zk_test/logbacklevel" />
+				</bean>
+			</list>
+		</property>
+	</bean>
+
+</beans>

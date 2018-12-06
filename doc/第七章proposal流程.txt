@@ -1,0 +1,21 @@
+在zookeeper的实现中，每一个事务请求都需要集群中的过半机器投票认可后才能被真正应用到zookeeper的内存数据库中去，这个投票与统计的过程
+被称为proposal流程。
+1、发起投票
+	如果当前请求是事务请求，那么leader服务器就会发起一轮事务投票。在发起事务投票之前，首先会检查当前服务器的zxid是否可用，关于
+	zookeeper的zxid可用性检查，如果当前服务端的zxid不可用，那么将会抛出XidRolloverException异常。
+2、生成提议proposal
+	如果当前服务端的zxid可用，那么就可以开始事务投票了，zookeeper会将之前创建的请求头和事务体，以及zxid和请求本身序列化到proposal
+	对象中————此处生成的proposal对象就是一个提议，即针对zookeeper服务器状态的一次变更申请。
+3、广播提议
+	生成提议后，leader服务器会以zxid作为标识，将该提议放入投票箱outstandingProposals中，同时会将该提议广播给所有的follower
+	服务器。
+4、收集投票
+	follower服务器在接收到leader发来的这个提议后，会进入sync流程来进行事务日志的记录，一旦日志记录完后，就会发送ack消息给leadr
+	服务器，leader根据这些ack消息来统计每个提议的投票情况。
+5、将请求放入toBeApplied队列
+	在该提议被提交之前，zookeeper首先会将其放入toBeApplied队列中去。
+6、广播commit消息
+	一旦zookeeper确认一个提议已经可以被提交了，那么leader服务器就会向follower和observer服务器发送commit消息，以便所有服务器
+	都能够提交该提议。这里需要注意的一点是，由于observer服务器并未参与之前的提议投票，因此observer服务器尚未保存任何关于该提议的
+	信息，所以在广播commit消息的时候，需要区别对待，leader会向其发送一种被称为inform的消息，该消息体中包含了当前提议的内容，而对于
+	follower服务器，由于已经保存了所有关于提议的信息，因此leader只需要向其发送zxid即可。

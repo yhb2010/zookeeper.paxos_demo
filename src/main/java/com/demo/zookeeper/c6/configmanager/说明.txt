@@ -1,0 +1,8 @@
+1、application.properties
+	项目配置文件，里面除了配置ZooKeeper服务器地址和读取的节点以外，其他所有的配置都应该保存在ZooKeeper中。
+	zoo.paths=/properties
+
+	程序里设置了namespace为cfg
+
+2、在zk上新建节点： create /cfg/properties "ip=127.0.0.1"
+3、客户端增加监控点监控/cfg/properties节点的内容变化

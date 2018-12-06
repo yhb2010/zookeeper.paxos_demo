@@ -1,0 +1,17 @@
+ZooKeeper与Curator注册和监控
+Curator提供了对zookeeper客户端的封装，并监控连接状态和会话session，特别是会话session过期后，curator能够重新连接zookeeper，并且创建一个新的session。
+对于zk的使用者来说，session的概念至关重要，如果想了解更多session的说明，请访问：http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html
+zk客户端和zk服务器间主要可能存在下面几种异常情况：
+1、短暂失去连接：此时客户端检测到与服务端的连接已经断开，但是服务端维护的客户端session尚未过期，之后客户端和服务端重新建立了连接；
+当客户端重新连接后，由于session没有过期，zookeeper能够保证连接恢复后保持正常服务。
+2、失去连接时间很长：此时服务器相对于客户端的session已经过期了，与先前session相关的watcher和ephemeral的路径和数据都会消失；
+当Curator重新创建了与zk的连接后，会获取到session expired异常，Curator会销毁先前的session，并且会创建一个新的session，需要注意的是，
+与之前session相关的watcher和ephemeral类型的路径和数据在新的session中也不会存在，需要开发者在
+CuratorFramework.getConnectionStateListenable().addListener()中添加状态监听事件，对ConnectionState.LOST事件进行监听，当
+session过期后，使得之前的session状态得以恢复。对于ephemeral类型，在客户端应该保持数据的状态，以便及时恢复。
+3、客户端重新启动：不论先前的zk session是否已经过期，都需要重新创建临时节点、添加数据和watch事件，先前的session也会在稍后的一段时间内
+过期。
+4、Zk服务器重新启动：由于zk将session信息存放到了硬盘上，因此重启后，先前未过期的session仍然存在，在zk服务器启动后，客户端与zk服务器创
+建新的连接，并使用先前的session，与1相同。
+5、需要注意的是，当session过期了，在session过期期间另外的客户端修改了zk的值，那么这个修改在客户端重新连接到zk上时，zk客户端不会接收到
+这个修改的watch事件（尽管添加了watch），如果需要严格的watch逻辑，就需要在curator的状态监控中添加逻辑。

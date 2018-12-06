@@ -1,0 +1,22 @@
+地址解析器接口HostProvider，接口定义：
+	1、int size()：该方法用于返回当前服务器地址列表的个数
+	2、InetSocketAddress next(long spinDelay)：该方法用于返回一个服务器地址InetSocketAddress，以便客户端进行服务器连接
+	3、void onConnected()：这是一个回调方法，如果客户端与服务器成功创建连接，就通过调用这个方法来通知HostProvider
+
+zookeeper规定，任何对于该接口的实现必须满足以下3点：
+	1、next()方法必须要有合法返回值，不能返回null或其它不合法的InetSocketAddress
+	2、next()方法必须返回已解析的InetSocketAddress对象，服务器的地址列表已经被保存在ConnectStringParser.serverAddress中，
+	但是需要注意的是，此时里面存放的都是没有被解析的InetSocketAddress。在进一步传递到HostProvider后，HostProvider需要负责
+	来对这个InetSocketAddress列表进行解析，不一定是在next()方法中来解析，但是无论如何，最终在next()方法中返回的必须是已被解析的
+	InetSocketAddress对象。
+	3、size()方法不能返回0。也就是说HostProvider中必须至少有一个服务器地址。
+
+对HostProvider的几个设想：
+	1、配置文件方式：在zookeeper默认的构造方法中，是通过传入服务器地址列表的方式来实现地址列表的设置，但其实通常开发人员更习惯于
+	将例如ip地址这样的配置信息保存在一个单独的配置文件里，针对这样的需求，我们可以自己实现一个HostProvider，通过在应用启动的时候
+	加载这个配置文件来实现对服务器地址列表的获取。
+	2、动态变更的地址列表管理：在使用过程中，我们会碰到这样的问题：zookeeper服务器集群的整体迁移或个别机器的变更，会导致大批客户端
+	应用跟着一起进行变更。出现这个局面的原因是因为我们将一些可能会动态变更的ip地址写死在程序中。为了解决这个问题，可以实现这样一个
+	HostProvider：地址列表管理器能够定时从dns或者一个配置管理中心上解析出zookeeper服务器地址列表，如果这个地址列表变了，那么就
+	同时更新到serverAddress集合中去，这样在下次需要获取服务器地址（即调用next方法）时，就自然而然的使用了新的服务器地址，随着时间
+	推移，慢慢的就能够在保证客户端透明的情况下实现zookeeper服务器机器的变更。

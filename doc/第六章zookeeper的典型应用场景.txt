@@ -1,0 +1,6 @@
+为了保护假死状态的Canal Server，避免因瞬间Running节点失效导致instance重新分布带来的资源消耗，所以设计了一个策略：
+	状态为Standby的Canal Server在收到Running节点释放的通知后，会延迟一段时间抢占Running节点，而原本处于Running状态的instance，即Running
+	节点的拥有者可以不需要等待延迟，直接取得Running节点。
+
+采取抢占式的模式，尝试在RequestA目录下创建一个lock节点，谁创建成功就可以代表当前谁抢到了任务，而没抢到该任务的节点，便会关注该lock节点的变化（因为
+一旦该lock节点消失，那么代表当前抢到任务的节点可能出现了异常退出，没有完成任务），然后继续抢占模型。

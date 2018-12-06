@@ -1,0 +1,9 @@
+ZooKeeper 集群角色介绍
+	最典型集群模式：Master/Slave模式（主备模式）。在这种模式中，通常 Master服务器作为主服务器提供写服务，其他的Slave服务器从服务器通过异步复制
+	的方式获取Master服务器最新的数据提供读服务。
+	
+	但是，在ZooKeeper中没有选择传统的 Master/Slave概念，而是引入了Leader、Follower和Observer三种角色。
+	
+	ZooKeeper集群中的所有机器通过一个Leader选举过程来选定一台称为“Leader”的机器，Leader既可以为客户端提供写服务又能提供读服务。除了Leader
+	外，Follower和 Observer都只能提供读服务。Follower和 Observer唯一的区别在于Observer机器不参与Leader的选举过程，也不参与写操作
+	的“过半写成功”策略，因此Observer机器可以在不影响写性能的情况下提升集群的读性能。

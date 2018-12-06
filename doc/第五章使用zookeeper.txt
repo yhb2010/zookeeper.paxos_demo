@@ -1,0 +1,33 @@
+配置文件zoo.cfg
+	tickTime=2000
+	dataDir=/var/lib/zookeeper
+	clientPort=2181
+	initLimit=5
+	syncLimit=2
+	server.1=ip1:2888:3888
+	server.2=ip2:2888:3888
+	server.3=ip3:2888:3888
+	其中server.id=host:port:port
+	id称为server id，用来标识该机器在集群中的机器序号，同时，在每台zookeeper机器上，我们都需要在数据目录（即dataDir参数指定的目录）下创建一个myid文件，该文件只有一行
+	内容，并且是一个数字，即对应于每台机器的server id数字。
+	集群中所有机器上zoo.cfg文件的内容都应该是一致的。id的范围是1-255。
+
+脚本命令：
+	1、zkCleanup：清理历史数据，包括事务日志文件和快照数据文件
+	2、zkCli：简易客户端
+	3、zkEnv：设置环境变量
+	4、zkServer：服务器的启动、停止和重启
+
+	停止服务：zkServer.sh stop
+
+客户端脚本：
+	create创建：create [-s] [-e] /zk-book 123 [acl]
+	创建一个/zk-book的节点，节点的数据内容是123，-s代表顺序节点，-e代表临时节点，什么都不写代表永久节点，acl是权限控制，不写代表不做任何控制。
+
+	ls列出zookeeper节点下的所有子节点。
+
+	get获取zookeeper指定节点的数据内容和属性信息。get path [watch]
+
+	set更新指定节点的数据内容。set path data [version]，节点的数据是有版本概念的，这个参数用于指定本次更新操作是基于znode的哪一个数据版本进行的。
+
+	delete path [version]，version参数和set命令中的version参数的作用是一致的。无法删除一个包含子节点的节点。

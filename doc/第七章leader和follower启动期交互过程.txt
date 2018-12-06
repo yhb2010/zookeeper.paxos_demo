@@ -1,0 +1,29 @@
+zookeeper已经完成了leader选举，并且集群中每个服务器都已经确定了自己的角色————通常情况下，就分为leader和follower两种角色，下面
+我们来对leader和follower在启动期间的工作原理进行讲解。
+1、创建leader服务器和follower服务器
+	完成leader选举之后，每个服务器都会根据自己的服务器角色创建相应的服务器实例，并开始进入各自角色的主流程。
+2、leader服务器启动follower接收器learnerCnxAcceptor
+	在zookeeper集群运行期间，leader服务器需要和所有其余的服务器保持连接以确定集群的机器存活情况，learnerCnxAcceptor接收器用于
+	负责接收所有非leader服务器的连接请求。
+3、learner服务器开始和leader服务器建立连接
+	所有的learner服务器在启动完毕后，会从leader选举的投票结果中找到当前集群中的leader服务器，然后与其建立连接。
+4、leader服务器创建learnerHandler
+	leader接收到来自其他机器的连接创建请求后，会创建一个learnerHandler实例，每个learnerHandler实例都对应一个leader与learner
+	服务器之间的连接，其负责leader和learner服务器之间几乎所有的消息通信和数据同步。
+5、向leader注册
+	当合leader建立连接后，learner就会开始向leader进行注册————所谓注册，就是将learner服务器自己的基本信息发送给leader服务器，
+	我们称之为learnerInfo，包括当前服务器的sid和服务器处理的最新的zxid。
+6、leader解析learner信息，计算新的epoch
+	leader服务器在接收到learner的基本信息后，会解析出该learner的sid和zxid，然后根据该learner的zxid解析出其对应的epoch_of_learner，
+	和当前leader服务器的epoch_of_learner进行比较，如果该learner的epoch_of_learner更大的话，那么久更新leadr的epoch：
+	epoch_of_leader=epoch_of_leader+1
+	然后learnerHandle会进行等待，直到过半的learner已经向leader进行了注册，同时更新了epoch_of_leader之后，leader就可以确定
+	当前集群的epoch了。
+7、发送leader状态
+	计算出新的epoch之后，leader会将该信息以一个learnerInfo消息的形式发送给learner，同时等到learner的响应。
+8、learner发送ack消息
+	follower在收到来自leader的learnerInfo消息后，会解析出epoch和zxid，然后向leader反馈一个ackepoch响应。
+9、数据同步
+	leader服务器接收到learner的这个ack消息后，就可以开始与其进行数据同步了。
+10、启动leader和learner服务器
+	当有过半的learner已经完成了数据同步，那么leader和learner服务器实例就可以开始启动了。

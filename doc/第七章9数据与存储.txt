@@ -1,0 +1,52 @@
+在zookeeper中，数据存储分为两部分：
+	内存数据存储好磁盘数据存储
+
+关于事务日志文件名的后缀，这里需要说明：该后缀其实是一个事务id：zxid，并且是写入该事务日志文件第一条事务记录的zxid，使用zxid作为
+文件后缀，可以帮助我们迅速定位到某一个事务操作所在的事务日志。
+
+日志截断：
+	在zookeeper运行过程中，可能出现这样的情况，非leader机器上记录的事务id（peerLastZxid）比leader服务器大，无论这个情况是如何
+	发生的，都是一个非法的运行时状态，同时，zookeeper遵循一个原则：只要集群中存在leader，那么所有机器都必须与该leader的数据保存
+	同步。
+	因此，一旦某台机器碰到上述情况，leader会发送trunc命令给这个机器，要求其进行日志截断。learner服务器在接收到该命令后，就会删除
+	所有包含或大于peerLastZxid的事务日志文件。
+
+针对客户端的每一次事务操作，zookeeper都会将它们记录到事务日志中，当然，zookeeper同时也会将数据变更应用到内存数据库，另外，zookeeper
+会在进行若干次事务日志记录后，将内存数据库的全量数据dump到本地文件中，这个过程就是数据快照，可以使用snapCount参数来配置每次数据快照
+之间的事务操作次数。
+需要尽量避免zookeeper集群中的所有机器在同一时间进行数据快照，因此zookeeper在具体的实现中，并不是严格按照这个策略执行的，而是采用
+过半随机策略。
+如果我们配置snapCount值为100000，那么，zookeeper会在50000到100000次事务日志记录后进行一次数据快照。
+
+数据初始化：在zookeeper服务器启动期间，首先会进行数据初始化工作，用于将存储在磁盘上的数据文件加载到zookeeper服务器内存中。
+初始化流程：
+	1、初始化FileTxnSnapLog
+	2、初始化ZKDatabase
+	3、创建PlayBackListener监听器
+	4、处理快照文件
+	5、获取最近的100个快照文件
+	6、解析快照文件
+	7、获取最新的zxid
+	8、处理事务日志
+	9、获取所有zxid_for_snap之后提交的事务
+	10、事务应用
+	11、获取最新zxid
+	12、校验epoch
+	epoch是zookeeper中一个非常特别的变量，其字面意思是纪元、时代，在zookeeper中，epoch标识了当前leader的周期，每次选举产生一个
+	新的leader服务器之后，就会生成一个新的epoch。在运行期间集群中机器相互通信的过程中，都会带上这个epoch以确保彼此在同一个leader
+	周期内。
+	PlayBackListener会将这些刚刚被应用到内存数据库中的事务转存到ZKDatabase.committedLog中，以便集群中服务器间进行快速的数据
+	同步。
+
+数据同步：简单的讲，数据同步过程就是leader服务器将那些没有在learner服务器上提交过的事务请求同步给learner服务器。
+在开始数据同步之前，leader服务器会进行数据同步初始化，首先会从zookeeper的内存数据库中提取出事务请求对应的提议缓存队列（下面我们用“
+提议缓存队列”来指代该队列）：proposals，同时完成对以下三个zxid值的初始化。
+	1、peerLastZxid：该learner服务器最后处理的zxid
+	2、minCommittedLog：leader服务器提议缓存队列committedLog中的最小zxid
+	2、maxCommittedLog：leader服务器提议缓存队列committedLog中的最大zxid
+	zookeeper集群数据同步通常分为四类，分别是直接差异化同步DIFF、先回滚再差异化同步TRUNC+DIFF、仅回滚同步TRUNC、全量同步SNAP
+
+直接差异化同步：
+	举个例子，假如某个时刻leadr服务器的提议缓存队列对应的zxid依次是：0x50000001、0x50000002、0x50000003、0x50000004、
+	0x50000005，而learner服务器最后处理的zxid为0x50000003，于是leader服务器就会依次将0x50000004、0x50000005两个提议同步
+	给learner服务器。

@@ -1,0 +1,30 @@
+1、在zk上新建节点： create /zk_test/logbacklevel "0"
+2、修改节点值：
+	set /zk_test/logbacklevel "0"
+	set /zk_test/logbacklevel "10"
+	set /zk_test/logbacklevel "20"
+	set /zk_test/logbacklevel "30"
+	set /zk_test/logbacklevel "40"
+	输出日志级别变化：
+	Setting logback new level to :TRACE
+	Setting logback new level to :DEBUG
+	Setting logback new level to :INFO
+	Setting logback new level to :WARN
+	Setting logback new level to :ERROR
+
+引入：
+	<dependency>
+			<groupId>org.apache.zookeeper</groupId>
+			<artifactId>zookeeper</artifactId>
+			<version>3.4.9</version>
+			<exclusions>
+	            <exclusion>
+	                <groupId>log4j</groupId>
+	                <artifactId>log4j</artifactId>
+	            </exclusion>
+	            <exclusion>
+	                <groupId>org.slf4j</groupId>
+	                <artifactId>slf4j-log4j12</artifactId>
+	            </exclusion>
+	        </exclusions>
+		</dependency>

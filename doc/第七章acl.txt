@@ -1,0 +1,75 @@
+身份的认证有4种方式：
+	1、world：默认方式，相当于全世界都能访问，可以看做一种特殊的digest模式，它只有一个权限标识，即world:anyone
+	2、auth：代表已经认证通过的用户(cli中可以通过addauth digest user:pwd 来添加当前上下文中的授权用户)
+	3、digest：即用户名:密码这种方式认证，这也是业务系统中最常用的
+	4、ip：使用Ip地址认证
+	5、super：超级用户的意思，也是一种特殊的digest模式。在super模式下，超级用户可以对zookeeper上的数据进行任何操作
+
+授权对象id：
+	1、ip模式下：通常是ip地址或ip段，例如127.0.0.145或127.0.0.1/24
+	2、digest模式下：自定义，通常是username:BASE64(SHA-1(username:password))
+	3、world模式下：只有一个id：anyone
+	4、super模式下：与digest模式一致
+
+权限：指那些通过权限检查后可以被允许执行的操作，在zookeeper中，所有对数据的操作权限分为五大类：
+	CREATE、READ、WRITE、DELETE、ADMIN 也就是 增、删、改、查、管理权限，这5种权限简写为crwda(即：每个单词的首字符缩写)
+	注：这5种权限中，delete是指对子节点的删除权限，其它4种权限指对自身节点的操作权限
+
+自定义权限控制：
+	权限控制器需要实现AuthenticationProvider接口，注册自定义权限控制器通过在zoo.cfg配置文件中配置如下配置项：
+	authProvider.1=com.zkbook.CustomAuthenticationProvider
+
+命令行工具：
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 3] create -e /zk-book-noacl init
+	Created /zk-book-noacl
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 4] getAcl /zk-book-noacl
+	'world,'anyone
+	: cdrwa
+	通过getAcl命令可以发现，刚创建的节点，默认是 world,anyone的认证方式，具有cdrwa所有权限
+
+	添加的时候创建权限：
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 5] create -e /zk-book-acl init digest:foo:+owfoSBn/am19roBPzR1/MfCblE=:r
+	Created /zk-book-acl
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 6] getAcl /zk-book-acl
+	'digest,'foo:+owfoSBn/am19roBPzR1/MfCblE=
+	: r
+
+	通过setAcl添加权限：
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 7] create -e /zk-book-acl2 init
+	Created /zk-book-acl2
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 8] setAcl /zk-book-acl2 digest:foo:+owfoSBn/am19roBPzR1/MfCblE=:rw
+	cZxid = 0xc00000088
+	ctime = Tue Mar 28 12:34:31 CST 2017
+	mZxid = 0xc00000088
+	mtime = Tue Mar 28 12:34:31 CST 2017
+	pZxid = 0xc00000088
+	cversion = 0
+	dataVersion = 0
+	aclVersion = 1
+	ephemeralOwner = 0x15b0d6bd10f0011
+	dataLength = 4
+	numChildren = 0
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 9] getAcl /zk-book-acl2
+	'digest,'foo:+owfoSBn/am19roBPzR1/MfCblE=
+	: rw
+
+	setAcl /path digest这种方式，必须输入密码加密后的值，这在cli控制台上很不方便，所以下面这种方式更常用：
+	先用addauth digest user1:12345 增加一个认证用户，然后用 setAcl /test auth:user1:12345:r 设置权限，但是密码这里输入的是明文
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 10] create -e /zk-book-acl3 init
+	Created /zk-book-acl3
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 11] addauth digest user1:123
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 12] setAcl /zk-book-acl3 auth:user1:123:r
+	cZxid = 0xc0000008a
+	ctime = Tue Mar 28 12:37:58 CST 2017
+	mZxid = 0xc0000008a
+	mtime = Tue Mar 28 12:37:58 CST 2017
+	pZxid = 0xc0000008a
+	cversion = 0
+	dataVersion = 0
+	aclVersion = 1
+	ephemeralOwner = 0x15b0d6bd10f0011
+	dataLength = 4
+	numChildren = 0
+	[zk: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183(CONNECTED) 14] getAcl /zk-book-acl3
+	'digest,'user1:Nv3cjIteQ1W3F6fZb+mYaNSs5rc=
+	: r

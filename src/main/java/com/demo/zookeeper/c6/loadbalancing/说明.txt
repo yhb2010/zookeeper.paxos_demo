@@ -1,0 +1,13 @@
+三个类：
+	ServiceAProvider
+	ServiceBProvider
+	ServiceConsumer
+
+其中
+	ServiceAProvider提供的服务名service-A，指向IP为192.168.58.130
+	ServiceBProvider提供的服务名service-A，指向IP为192.168.58.131
+	当有消费者请求时，随机地选取service-A列表的服务器提供服务
+
+ServiceConsumer 为消费者类
+
+有一个问题：比如网络连接断开后，zookeeper上的临时节点被删除了，此时如果网络重新连上，也不会重新创建节点了，解决办法见register。

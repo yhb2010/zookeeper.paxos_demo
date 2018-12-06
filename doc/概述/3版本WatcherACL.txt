@@ -1,0 +1,17 @@
+版本
+	在前面我们已经提到，Zookeeper的每个ZNode上都会存储数据，对应于每个ZNode，Zookeeper都会为其维护一个叫作Stat的数据结构，Stat中
+	记录了这个ZNode的三个数据版本，分别是version（当前ZNode的版本）、cversion（当前ZNode子节点的版本）和 cversion（当前ZNode
+	的ACL版本）。
+
+Watcher
+	Watcher（事件监听器），是Zookeeper中的一个很重要的特性。Zookeeper允许用户在指定节点上注册一些Watcher，并且在一些特定事件触发的时
+	候，ZooKeeper服务端会将事件通知到感兴趣的客户端上去，该机制是Zookeeper实现分布式协调服务的重要特性。
+
+ACL
+	Zookeeper采用ACL（AccessControlLists）策略来进行权限控制，类似于 UNIX 文件系统的权限控制。Zookeeper 定义了如下5种权限。
+		create：创建子节点的权限
+		read：获取节点数据和子节点列表的权限
+		write：更新节点数据的权限
+		delete：删除子节点的权限
+		admin：设置节点acl的权限
+	其中尤其需要注意的是，CREATE和DELETE这两种权限都是针对子节点的权限控制。
